@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Thông Báo Nội Bộ</title>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --primary: #1a1a2e;
+    --accent: #e94560;
+    --accent2: #f5a623;
+    --surface: #ffffff;
+    --surface2: #f8f7f4;
+    --border: #e8e6e0;
+    --text: #1a1a2e;
+    --text-muted: #888880;
+    --success: #2ecc71;
+    --danger: #e74c3c;
+    --radius: 12px;
+    --shadow: 0 4px 24px rgba(26,26,46,0.08);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Be Vietnam Pro', sans-serif; background: var(--surface2); color: var(--text); min-height: 100vh; }
+
+/* Xóa !important để JavaScript có thể điều khiển hiển thị */
+#headerNav, .page { 
+    display: none; 
+}
+
+/* Chỉ giữ trang login hoặc trang public hiển thị mặc định tùy nhu cầu */
+#page-login.active, #page-public.active, #page-admin.active {
+    display: block;
+}
+  
+  /* HEADER */
+ .site-header {
+  background: var(--primary); /* Bỏ !important */
+  color: #fff;
+  padding: 0 15px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 64px;
+  width: 100%;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+  .company-logo { height: 30px !important; width: auto !important; }
+  .site-logo { display: flex !important; align-items: center !important; gap: 10px !important; flex: 1 !important; }
+  .logo-text { font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 700; white-space: nowrap; }
+  .header-nav { 
+  display: flex;
+  gap: 8px; 
+  align-items: center; 
+  justify-content: flex-end; 
+  flex: 1; 
+}
+
+  @media (max-width: 600px) {
+    .logo-text { display: none !important; }
+    .nav-tab { padding: 6px 10px !important; font-size: 12px !important; }
+  }
+
+  /* Lớp phủ ảnh phóng to */
+#imageOverlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.9);
+    z-index: 9999;
+    justify-content: center;
+    align-items: center;
+    cursor: zoom-out;
+}
+#imageOverlay img {
+    max-width: 95%;
+    max-height: 95%;
+    border-radius: 8px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.5);
+}
+  /* Tìm class hoặc ID bao bọc danh sách tin ghim */
+#pinnedList {
+    max-height: calc(100vh - 150px); /* Giới hạn chiều cao theo màn hình */
+    overflow-y: auto; /* Hiện thanh cuộn khi nội dung quá dài */
+    padding-right: 5px; /* Tạo khoảng trống nhỏ cho thanh cuộn */
+}
+
+/* Tùy chỉnh thanh cuộn cho đẹp và gọn hơn (tùy chọn) */
+#pinnedList::-webkit-scrollbar {
+    width: 4px;
+}
+#pinnedList::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 10px;
+}
+  .preview-item {
+    position: relative;
+    display: inline-block;
+    margin: 5px;
+}
+.remove-btn {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: var(--danger);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+.remove-btn:hover { background: #c0392b; }
+  
+  .nav-tab { background: rgba(255,255,255,0.08); border: none; color: rgba(255,255,255,0.8); padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 14px; transition: 0.2s; font-weight: 500; }
+  .nav-tab.active, .nav-tab:hover { background: rgba(255,255,255,0.12); color: #fff; }
+  .nav-tab.accent-tab { background: var(--accent); color: #fff; }
+  .logout-btn { background: none; border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.7); padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; margin-left: 10px; }
+
+  /* LAYOUT CHÍNH */
+  .main-container { display: flex; gap: 24px; max-width: 1100px; margin: 0 auto; padding: 2rem; }
+  .notice-column { flex: 3; }
+  .sidebar-column { flex: 1; }
+
+  @media (max-width: 900px) {
+    .main-container { flex-direction: column; padding: 1rem; }
+    .sidebar-column { order: -1; } /* Tin ghim hiện lên trước trên mobile */
+  }
+
+  /* PAGES */
+  .page { display: none; }
+  .page.active { display: block; }
+  
+  .page-title { font-family: 'Playfair Display', serif; font-size: 32px; margin-bottom: 4px; color: var(--primary); }
+  .page-subtitle { color: var(--text-muted); font-size: 14px; margin-bottom: 1.5rem; }
+
+  /* SIDEBAR TIN GHIM */
+  .sidebar-panel { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); padding: 1.2rem; box-shadow: var(--shadow); position: sticky; top: 84px; }
+  .sidebar-title { font-size: 16px; font-weight: 700; color: var(--accent); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  .pinned-item { padding: 10px 0; border-bottom: 1px solid #f0f0f0; }
+  .pinned-item:last-child { border: 0; }
+  .pinned-link { text-decoration: none; color: var(--primary); font-size: 14px; font-weight: 500; display: block; margin-bottom: 4px; }
+  .pinned-date { font-size: 11px; color: var(--text-muted); }
+
+  /* NOTICE CARD */
+  .notice-grid { display: grid; gap: 16px; }
+  .notice-card { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); padding: 1.5rem; box-shadow: var(--shadow); position: relative; }
+  .notice-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+  .notice-title { font-size: 18px; font-weight: 700; color: var(--primary); }
+  .pin-badge { font-size: 10px; background: #fff3cd; color: #856404; padding: 2px 8px; border-radius: 10px; font-weight: 700; border: 1px solid #ffeeba; }
+  .notice-body { font-size: 14px; color: #444; line-height: 1.7; }
+  .notice-attachment { margin-top: 15px; padding-top: 12px; border-top: 1px dashed var(--border); display: flex; flex-wrap: wrap; gap: 10px; }
+  .notice-attachment img { max-width: 100%; height: auto; max-height: 400px; border-radius: 8px; border: 1px solid #eee; cursor: zoom-in; }
+  .notice-footer { display: flex; align-items: center; gap: 16px; font-size: 12px; color: var(--text-muted); margin-top: 15px; }
+
+  /* ADMIN PANEL */
+  .panel { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); padding: 1.5rem; box-shadow: var(--shadow); margin-bottom: 20px; }
+  label { font-size: 13px; font-weight: 600; display: block; margin-bottom: 6px; }
+  input[type=text], input[type=password], textarea {
+    width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px;
+    font-family: inherit; font-size: 14px; background: var(--surface2); margin-bottom: 16px; outline: none;
+  }
+  .attach-zone { background: #fcfcfc; border: 2px dashed var(--border); border-radius: 8px; padding: 20px; text-align: center; margin-bottom: 16px; }
+  .send-btn { width: 100%; padding: 14px; font-size: 15px; border-radius: 10px; background: var(--primary); color: #fff; border: none; cursor: pointer; font-weight: 600; }
+</style>
+</head>
+<body>
+<div id="imageOverlay" onclick="this.style.display='none'">
+    <img id="fullImage" src="">
+</div>
+  
+<header class="site-header">
+  <div class="site-logo">
+    <img src="https://raw.githubusercontent.com/duyuyen03/sonionnotification/main/Logo%20sonion.png" alt="Sonion" class="company-logo">
+    <span class="logo-text">Thông Báo Nội Bộ</span>
+  </div>
+<div class="header-nav" id="headerNav" style="display: none;">
+        <button class="nav-tab" id="tab-public" onclick="showPage('public')">📢 Thông báo</button>
+        <button class="nav-tab" id="tab-admin" onclick="showPage('admin')">⚙️ Quản lý</button>
+    </div>
+</header>
+
+<!-- TRANG CHỦ (PUBLIC) -->
+<div class="page active" id="page-public">
+  <div class="main-container">
+    <div class="notice-column">
+      <h1 class="page-title">Thông báo</h1>
+      <p class="page-subtitle" id="publicSubtitle">Đang tải...</p>
+      <div class="notice-grid" id="noticeGrid"></div>
+    </div>
+    
+<aside class="sidebar-column">
+    <div class="sidebar-panel">
+        <div class="sidebar-title">📌 Tin quan trọng</div>
+        <div id="pinnedList" style="max-height: 70vh; overflow-y: auto;">
+            <p style="color:#999; font-size:13px">Đang tải tin ghim...</p>
+        </div>
+    </div>
+</aside>
+  </div>
+</div>
+
+<!-- TRANG LOGIN -->
+<div class="page" id="page-login">
+  <div class="panel" style="max-width: 400px; margin: 40px auto;">
+    <h2 style="margin-bottom:20px">Administrator</h2>
+    <label>User</label>
+    <input type="text" id="loginUser">
+    <label>Password</label>
+    <input type="password" id="loginPass">
+    <p id="loginNote" style="color:var(--accent); font-size:13px; margin-bottom:10px; display:none; font-weight:600;">
+       ⏳ Vui lòng chờ trong giây lát...
+    </p>
+    <p id="loginErr" style="color:var(--danger); font-size:13px; margin-bottom:10px; display:none">❌ Sai tài khoản hoặc mật khẩu</p>
+    <button class="send-btn" onclick="doLogin()">Login</button>
+  </div>
+</div>
+
+<!-- TRANG QUẢN LÝ -->
+<div class="page" id="page-admin">
+  <div class="main-container" style="max-width: 960px; flex-direction: column;">
+    <h1 class="page-title">Bảng điều khiển</h1>
+    <div class="panel">
+      <label>Tiêu đề thông báo</label>
+      <input type="text" id="noticeTitle" placeholder="VD: Thông báo lịch trực tết...">
+      <label>Nội dung</label>
+      <textarea id="noticeContent" style="min-height:120px; width:100%; border-radius:8px; border:1px solid var(--border); padding:10px;" placeholder="Nhập nội dung..."></textarea>
+      
+      <!-- Checkbox Ghim -->
+<div id="pinOption" style="margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+    <input type="checkbox" id="isPinnedCheck" style="width: 18px; height: 18px; cursor: pointer;">
+    <label for="isPinnedCheck" style="margin-bottom: 0; cursor: pointer; color: var(--accent);">Ghim thông báo này vào thanh bên</label>
+</div>
+
+      <label>Đính kèm tài liệu</label>
+      <div class="attach-zone">
+    <input type="file" id="noticeFile" style="display:none" multiple onchange="handleFile(this)">
+    <button type="button" onclick="document.getElementById('noticeFile').click()">Chọn tệp</button>
+    <p id="fileNameDisplay" style="font-size:12px; color:#888; margin-top:8px">Chưa có tệp nào</p>
+    <!-- Nơi hiển thị ảnh và nút xóa -->
+    <div id="previewImgContainer" style="margin-top: 10px; display: flex; flex-wrap: wrap; justify-content: center;"></div>
+</div>
+      <button class="send-btn" id="sendBtn" onclick="publishNotice()">Đăng & Gửi Power Automate</button>
+    </div>
+    
+    <div class="panel">
+      <h3>Lịch sử thông báo</h3>
+      <div id="adminNoticeList" style="margin-top:15px"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const WEBHOOK_URL = 'https://defaultaf1f375339254e6f949b97c0073208.03.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/9f15bac38c2640b185716127e7c0ff44/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=Bxa82ctx9WzqmiTinfUvl5OuwFHkDyX-LhfbnPq70bs';
+const DB_URL = 'https://script.google.com/macros/s/AKfycbyuYF9orcbFMlzVy0o-Td6IyEp-cXhK8WGikECjiCNXAfPBL5MuS1Ha3_dRVjdmdRMIGg/exec'; 
+
+let state = { notices: [], currentUser: "", currentTeam: "" };
+let selectedFiles = [];
+
+
+function init() {
+    const nav = document.getElementById('headerNav');
+    if (nav) {
+        nav.style.setProperty('display', 'none', 'important');
+    }
+    showPage('login'); 
+}
+
+function showPage(pageId) {
+    // 1. Ẩn tất cả các trang bằng cách ép kiểu display
+    const pages = document.querySelectorAll('.page');
+    pages.forEach(p => {
+        p.style.setProperty('display', 'none', 'important');
+        p.classList.remove('active');
+    });
+
+    // 2. Hiện trang được chọn
+    const targetPage = document.getElementById('page-' + pageId);
+    if (targetPage) {
+        targetPage.style.setProperty('display', 'block', 'important');
+        targetPage.classList.add('active');
+    }
+
+    // 3. Cập nhật trạng thái nút bấm (Tab)
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    const activeTab = document.getElementById('tab-' + pageId);
+    if (activeTab) activeTab.classList.add('active');
+
+    // 4. Load dữ liệu tương ứng
+    if (pageId === 'public') renderPublic();
+    if (pageId === 'admin') renderAdminNotices();
+}
+
+async function doLogin() {
+    const u = document.getElementById('loginUser').value;
+    const p = document.getElementById('loginPass').value;
+    const err = document.getElementById('loginErr');
+    const nav = document.getElementById('headerNav');
+    
+    // Lấy thêm 2 phần tử này
+    const note = document.getElementById('loginNote');
+    const btn = document.getElementById('loginBtn'); 
+    
+    if(!u || !p) return alert("Vui lòng nhập tài khoản và mật khẩu!");
+
+    // --- BẮT ĐẦU XỬ LÝ ---
+    if (note) note.style.display = 'block'; // Hiện "Vui lòng chờ"
+    if (err) err.style.display = 'none';    // Ẩn lỗi cũ
+    if (btn) {
+        btn.disabled = true;                // Khóa nút
+        btn.innerText = "Đang kiểm tra..."; // Đổi chữ trên nút
+    }
+
+    try {
+        const response = await fetch(DB_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: "check_login", username: u, password: p })
+        });
+        const result = await response.json();
+
+        if (result.auth && result.auth.success) {
+            state.currentUser = u;
+            state.currentTeam = result.auth.team; 
+            state.notices = result.notices || [];
+
+            if (nav) {
+                nav.style.setProperty('display', 'flex', 'important');
+            }
+            
+            // Phân quyền (giữ nguyên logic cũ của bạn...)
+            const adminTab = document.getElementById('tab-admin');
+            const pinOption = document.getElementById('pinOption');
+            if (state.currentTeam === "ADMIN") {
+                if (adminTab) { adminTab.style.display = 'block'; adminTab.innerHTML = "⚙️ Quản lý"; }
+                if (pinOption) pinOption.style.display = 'flex';
+            } else if (state.currentTeam === "MEMBER") {
+                if (adminTab) { adminTab.style.display = 'block'; adminTab.innerHTML = "⚙️ Quản lý"; }
+                if (pinOption) pinOption.style.display = 'none';
+            } else {
+                if (adminTab) adminTab.style.display = 'none';
+            }
+
+            renderPublic(); 
+            showPage('public'); 
+            
+        } else {
+            if (err) err.style.display = 'block';
+        }
+    } catch(e) {
+        alert("Lỗi kết nối hệ thống!");
+        console.error(e);
+    } finally {
+        // --- KẾT THÚC ---
+        // Ẩn dòng ghi chú và mở lại nút dù thành công hay thất bại
+        if (note) note.style.display = 'none';
+        if (btn) {
+            btn.disabled = false;
+            btn.innerText = "Login";
+        }
+    }
+}
+
+async function handleFile(input) {
+    const files = Array.from(input.files);
+    
+    // Đọc các file mới được chọn
+    const newFiles = await Promise.all(files.map(file => {
+        return new Promise(resolve => {
+            const reader = new FileReader();
+            reader.onload = e => resolve({
+                Name: file.name,
+                ContentBytes: e.target.result.split(',')[1],
+                type: file.type,
+                fullData: e.target.result
+            });
+            reader.readAsDataURL(file);
+        });
+    }));
+
+    // Cộng dồn vào danh sách đã chọn (để có thể chọn nhiều lần)
+    selectedFiles = [...selectedFiles, ...newFiles];
+    renderPreviews();
+    
+    // Reset input file để có thể chọn lại chính file đó nếu muốn
+    input.value = "";
+}
+
+function renderPreviews() {
+    const container = document.getElementById('previewImgContainer');
+    container.innerHTML = "";
+    
+    selectedFiles.forEach((f, index) => {
+        const item = document.createElement('div');
+        item.className = 'preview-item';
+        
+        // Nếu là ảnh thì hiện ảnh, nếu là file khác thì hiện icon
+        if (f.type.startsWith('image/')) {
+            const img = document.createElement('img');
+            img.src = f.fullData;
+            img.style = "width:80px; height:80px; object-fit:cover; border-radius:6px; border:1px solid #ddd;";
+            item.appendChild(img);
+        } else {
+            const doc = document.createElement('div');
+            doc.style = "width:80px; height:80px; display:flex; align-items:center; justify-content:center; background:#eee; border-radius:6px; font-size:10px; text-align:center; padding:5px;";
+            doc.innerText = f.Name;
+            item.appendChild(doc);
+        }
+
+        // Tạo nút xóa
+        const delBtn = document.createElement('button');
+        delBtn.className = 'remove-btn';
+        delBtn.innerHTML = '×';
+        delBtn.onclick = (e) => {
+            e.preventDefault();
+            removeFile(index);
+        };
+        
+        item.appendChild(delBtn);
+        container.appendChild(item);
+    });
+
+    document.getElementById('fileNameDisplay').textContent = selectedFiles.length > 0 
+        ? `Đã chọn ${selectedFiles.length} tệp` 
+        : "Chưa có tệp nào";
+}
+
+function removeFile(index) {
+    selectedFiles.splice(index, 1); // Xóa file khỏi mảng dữ liệu
+    renderPreviews(); // Vẽ lại giao diện
+}
+
+async function publishNotice() {
+    const title = document.getElementById('noticeTitle').value;
+    const content = document.getElementById('noticeContent').value;
+    const isPinned = document.getElementById('isPinnedCheck').checked;
+    const btn = document.getElementById('sendBtn');
+    
+    if(!title || !content) return alert("Vui lòng nhập đủ thông tin!");
+    
+    btn.disabled = true;
+    const payload = {
+        title: title,
+        content: `[Team: ${state.currentTeam}] \n` + content,
+        date: new Date().toLocaleString('vi-VN'),
+        files: selectedFiles.map(f => ({ name: f.Name, data: f.fullData })),
+        isPinned: isPinned // Gửi trạng thái ghim lên Server
+    };
+
+    try {
+        await fetch(DB_URL, { method: 'POST', body: JSON.stringify(payload) });
+        if(WEBHOOK_URL) {
+            await fetch(WEBHOOK_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title: (isPinned ? "📌 " : "") + payload.title,
+                    content: payload.content,
+                    date: payload.date,
+                    attachments: selectedFiles.map(f => ({ Name: f.Name, ContentBytes: f.ContentBytes }))
+                })
+            });
+        }alert("Đăng thành công!");
+
+        // 1. Cập nhật dữ liệu mới vào state để hiển thị ngay
+        state.notices.push(payload); 
+
+        // 2. Reset sạch form để lần sau đăng tiếp không bị dính dữ liệu cũ
+        document.getElementById('noticeTitle').value = "";
+        document.getElementById('noticeContent').value = "";
+        document.getElementById('isPinnedCheck').checked = false;
+        selectedFiles = []; 
+        document.getElementById('previewImgContainer').innerHTML = "";
+        document.getElementById('fileNameDisplay').textContent = "Chưa có tệp nào";
+
+        // 3. Cập nhật lại giao diện và chuyển về trang thông báo
+        renderPublic(); 
+        showPage('public'); 
+        
+        btn.disabled = false; // Mở lại nút đăng bài
+    } catch(e) { 
+        alert("Lỗi gửi tin!"); 
+        btn.disabled = false; 
+    }
+}
+
+function renderPublic() {
+    const grid = document.getElementById('noticeGrid');
+    const pinnedList = document.getElementById('pinnedList');
+    document.getElementById('publicSubtitle').textContent = state.notices.length + " thông báo";
+    
+    // Render Tin Ghim (Sidebar)
+    // Render Tin Ghim (Sidebar)
+const pins = state.notices.filter(n => n.isPinned);
+pinnedList.innerHTML = pins.length > 0 ? pins.slice().reverse().map(n => `
+    <div class="pinned-item">
+        <a href="#notice-${n.title.replace(/\s+/g, '-')}" 
+           class="pinned-link" 
+           style="text-decoration: none; transition: 0.3s;"
+           onclick="scrollToNotice(event, 'notice-${n.title.replace(/\s+/g, '-')}')">
+           ${n.title}
+        </a>
+        <div class="pinned-date">${n.date}</div>
+    </div>
+`).join('') : '<p style="color:#999; font-size:13px">Không có tin ghim.</p>';
+
+    // Render Danh sách chính
+    if (state.notices.length === 0) {
+        grid.innerHTML = '<p style="text-align:center; padding:40px; color:#999">Chưa có thông báo nào.</p>';
+        return;
+    }
+
+    grid.innerHTML = state.notices.slice().reverse().map(n => {
+        let attachmentsHTML = "";
+        if (n.files && n.files.length > 0) {
+            attachmentsHTML = '<div class="notice-attachment">';
+            n.files.forEach(f => {
+                if (f.data && f.data.startsWith('data:image/')) {
+                    attachmentsHTML += `<img src="${f.data}" onclick="openFullImage('${f.data}')" title="Nhấp để xem ảnh lớn">`;
+                } else if (f.data) {
+                    attachmentsHTML += `<a href="${f.data}" download="${f.name}" style="color:var(--accent); text-decoration:none; font-size:12px; font-weight:600; border:1px solid #eee; padding:5px 10px; border-radius:4px; display:inline-block; margin-right:5px;">📎 ${f.name}</a>`;
+                }
+            });
+            attachmentsHTML += '</div>';
+        }
+
+        return `
+            <div class="notice-card" id="notice-${n.title.replace(/\s+/g, '-')}">
+                <div class="notice-header">
+                    <div class="notice-title">${n.title}</div>
+                    ${n.isPinned ? '<span class="pin-badge">📌 QUAN TRỌNG</span>' : ''}
+                </div>
+                <div class="notice-body">${n.content.replace(/\n/g, '<br>')}</div>
+                ${attachmentsHTML}
+                <div class="notice-footer">📅 ${n.date}</div>
+            </div>
+        `;
+    }).join('');
+}
+
+function openFullImage(base64Data) {
+    const overlay = document.getElementById('imageOverlay');
+    const fullImg = document.getElementById('fullImage');
+    
+    if (overlay && fullImg) {
+        fullImg.src = base64Data;
+        overlay.style.display = 'flex';
+    }
+}
+
+function renderAdminNotices() {
+    const list = document.getElementById('adminNoticeList');
+    if (state.notices.length === 0) {
+        list.innerHTML = '<p style="text-align:center; padding:20px; color:#999">Chưa có lịch sử thông báo.</p>';
+        return;
+    }
+
+    list.innerHTML = state.notices.slice().reverse().map((n, i) => {
+        const actualIndex = state.notices.length - 1 - i;
+        let attachmentsHTML = "";
+        if (n.files && n.files.length > 0) {
+            attachmentsHTML = '<div class="notice-attachment" style="margin-top:10px; border-top: 1px dashed #eee; padding-top:10px;">';
+            n.files.forEach(f => {
+                if (f.data && f.data.startsWith('data:image/')) {
+                    attachmentsHTML += `<img src="${f.data}" onclick="openFullImage('${f.data}')" style="height:60px; width:60px; object-fit:cover; border-radius:4px; margin-right:8px; border:1px solid #ddd; cursor:pointer;">`;
+                } else if (f.data) {
+                    attachmentsHTML += `<span style="font-size:11px; color:#666;">📎 ${f.name.substring(0,10)}...</span>`;
+                }
+            });
+            attachmentsHTML += '</div>';
+        }
+
+        return `
+            <div class="notice-card" style="margin-bottom:15px; background: #fff;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                    <div>
+                        <div class="notice-title" style="font-size:16px;">${n.isPinned ? '📌 ' : ''}${n.title}</div>
+                        <div class="notice-body" style="font-size:13px;">${n.content.replace(/\n/g, '<br>')}</div>
+                    </div>
+                    <button onclick="deleteNotice(${actualIndex})" style="color:var(--danger); background:none; border:1px solid var(--danger); padding:2px 8px; border-radius:4px; cursor:pointer; font-size:12px;">Xóa</button>
+                </div>
+                ${attachmentsHTML}
+                <div class="notice-footer">📅 ${n.date}</div>
+            </div>
+        `;
+    }).join('');
+}
+
+async function deleteNotice(index) {
+    if(!confirm("Xóa thông báo này?")) return;
+    try {
+        await fetch(DB_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: "delete", title: state.notices[index].title })
+        });
+        state.notices.splice(index, 1);
+        renderAdminNotices();
+    } catch(e) { alert("Lỗi xóa!"); }
+}
+
+function scrollToNotice(event, elementId) {
+    event.preventDefault(); // Ngăn chặn hành động mặc định của thẻ link
+    const element = document.getElementById(elementId);
+    if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        
+        // Hiệu ứng nháy nhẹ để người dùng biết đã đến nơi
+        element.style.borderColor = 'var(--accent)';
+        setTimeout(() => {
+            element.style.borderColor = 'var(--border)';
+        }, 1500);
+    }
+}
+init();
+</script>
+</body>
+</html>
