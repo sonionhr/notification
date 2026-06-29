@@ -178,7 +178,7 @@
   
 <header class="site-header">
   <div class="site-logo">
-    <img src="https://raw.githubusercontent.com/sonionhr/notification/main/Logo%20sonion.png" alt="Sonion" class="company-logo">
+    <img src="https://raw.githubusercontent.com/duyuyen03/sonionnotification/main/Logo%20sonion.png" alt="Sonion" class="company-logo">
     <span class="logo-text">Thông Báo Nội Bộ</span>
   </div>
 <div class="header-nav" id="headerNav" style="display: none;">
@@ -244,7 +244,7 @@
         <p id="loginErr" style="color:var(--danger); font-size:13px; margin-bottom:10px; display:none;">
             ❌ Sai tài khoản hoặc mật khẩu
         </p>
-        <button class="send-btn" onclick="doLogin()">Login</button>
+        <button class="send-btn" id="loginBtn" onclick="doLogin()">Login</button>
     </div>
 </div>
 
@@ -277,14 +277,14 @@
     
     <div class="panel">
       <h3>Lịch sử thông báo</h3>
-      <div id="adminNoticeList" style="margin-top:15px"></div>
+      <div id="adminNoticeList" style="margin-top:15px"></div> 
     </div>
   </div>
 </div>
 
 <script>
-const WEBHOOK_URL = 'https://default3930abb206f14a83933f1b805a5f73.09.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/6709539b9eb64db68d0a661fed153ddd/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=5bmT8703NPhPMMjtxpzO_PPzVCj68_d-zJWT1RNKrCw';
-const DB_URL = 'https://script.google.com/macros/s/AKfycbzPFCpC1KNDWObepPsc2FTg0KhGRev5Q8ywxOzOPB_uvB3XQX6yWwR9ad8GNbVDAwtnIQ/exec'; 
+const WEBHOOK_URL = 'https://defaultaf1f375339254e6f949b97c0073208.03.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/9f15bac38c2640b185716127e7c0ff44/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=Bxa82ctx9WzqmiTinfUvl5OuwFHkDyX-LhfbnPq70bs';
+const DB_URL = 'https://script.google.com/macros/s/AKfycbyx5l-qciQYhsA5iLKyCB24wWOPGPtd1xsbrftTliXfpOYblcoG0Px41f9B2q8AMViRtw/exec'; 
 
 let state = { notices: [], currentUser: "", currentTeam: "" };
 let selectedFiles = [];
@@ -374,13 +374,16 @@ async function doLogin() {
         btn.innerText = "Đang kiểm tra..."; // Đổi chữ trên nút
     }
 
-    try {
-        const response = await fetch(DB_URL, {
-            method: 'POST',
-            body: JSON.stringify({ action: "check_login", username: u, password: p })
-        });
-        const result = await response.json();
-
+    // Tìm đoạn này trong hàm doLogin() của file HTML và thay thế:
+try {
+    const response = await fetch(DB_URL, {
+        method: 'POST',
+        // Không set Headers Content-Type: application/json ở đây vì nó có thể kích hoạt lỗi CORS Preflight trên Google Domain
+        body: JSON.stringify({ action: "check_login", username: u, password: p })
+    });
+    
+    const result = await response.json();
+    // ... Giữ nguyên toàn bộ logic xử lý phân quyền bên dưới của bạn ...
         if (result.auth && result.auth.success) {
             state.currentUser = u;
             state.currentTeam = result.auth.team; 
@@ -502,12 +505,13 @@ async function publishNotice() {
     
     btn.disabled = true;
     const payload = {
-        title: title,
-        content: `[Team: ${state.currentTeam}] \n` + content,
-        date: new Date().toLocaleString('vi-VN'),
-        files: selectedFiles.map(f => ({ name: f.Name, data: f.fullData })),
-        isPinned: isPinned // Gửi trạng thái ghim lên Server
-    };
+    action: "publish", // Định nghĩa rõ hành động gửi tin lên Apps Script
+    title: title,
+    content: `[Team: ${state.currentTeam}] \n` + content,
+    date: new Date().toLocaleString('vi-VN'),
+    files: selectedFiles.map(f => ({ name: f.Name, data: f.fullData })),
+    isPinned: isPinned 
+};
 
     try {
         await fetch(DB_URL, { method: 'POST', body: JSON.stringify(payload) });
